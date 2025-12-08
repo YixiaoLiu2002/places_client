@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "places_client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python package for extracting health outcomes and health-risk behaviors data from CDC PLACES API"
 authors = ["Yixiao Liu"]
 license = "MIT"
