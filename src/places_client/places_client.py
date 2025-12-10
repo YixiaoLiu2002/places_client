@@ -35,6 +35,35 @@ class PlacesClient:
                 df[col] = pd.to_numeric(df[col])
         return df
 
+    def get_measure_list(self):
+        """
+        Queries PLACES measures metadata and display key information of all measures filtered by this package
+        (those categorized as health outcomes or health risk behaviors).
+
+        Returns
+        -------
+        measures_df: pandas Data Frame
+            A dataframe displaying the following the information of filtered measures:
+            - id: measure identifier
+            - short_name: short label
+            - full_name: full descriptive name
+            - catgory: measure category (Health Outcomes or Health Risk Behaviors)
+
+        Examples
+        --------
+        >>> measures = client.get_meansure_list()
+        >>> measures.head()
+        """
+        data_dictionary_id = 'm35w-spkz'
+        url = self.base_url + data_dictionary_id + '/query.json'
+
+        data = self._make_request(url)
+        measures_df = self._json_to_df(data)
+        measures_df = measures_df[measures_df['categoryid'].isin(['HLTHOUT', 'RISKBEH'])]
+        measures_df = measures_df[['measureid', 'measure_short_name', 'measure_full_name', 'category_name']]
+        measures_df.columns = pd.Index(['id', 'short_name', 'full_name', 'category'])
+        return measures_df
+    
     def get_county_data(self, release='2025'):
         """
         Retrieve county-level health-risk behaviors and health outcomes data from The CDC PLACES API.
@@ -51,7 +80,7 @@ class PlacesClient:
         
         Examples
         --------
-        >>> df = get_county_data('2023')
+        >>> df = client.get_county_data('2023')
         >>> df.head()
         """
         release_ids = {
@@ -59,7 +88,8 @@ class PlacesClient:
             '2024': 'fu4u-a9bh',
             '2023': 'h3ej-a9ec',
             '2022': 'duw2-7jbt',
-            '2021': 'pqpp-u99h'
+            '2021': 'pqpp-u99h',
+            '2020': 'dv4u-3x3q'
         }
         
         if not isinstance(release, str):
@@ -72,7 +102,47 @@ class PlacesClient:
         data = self._make_request(url)
         county_df = self._json_to_df(data)
         
-        # Only keep measures categorized as health outcomes and health risk behaviors
+        # Filter measures categorized as health outcomes and health risk behaviors
         county_df = county_df[county_df['category'].isin(['Health Outcomes', 'Health Risk Behaviors'])]
         county_df = county_df.reset_index(drop=True)
         return county_df
+
+    def filter_by_measures(self, df, measures=None, categories=None, measure_ids=None, cat_ids=None):
+        """
+        Get a subset of a PLACES DataFrame by measures or categories. 
+        Both short names and ids of measures and categories are supported.
+        
+        Parameters
+        ----------
+        df : pandas DataFrame
+            The dataframe to subset from.
+        measures: list of strings
+            Short names of measures to keep.
+        categories: list of strings
+            Short names of categories to keep.
+        measure_ids: list of strings
+            ids of measures to keep.
+        cat_ids: list of strings
+            ids of categories to keep.
+
+
+        Returns
+        -------
+        sub_df : pandas DataFrame
+            A dataframe containing only selected measures and/or categories.
+        
+        Examples
+        --------
+        >>> new_df = client.filter_by_measures(df, measures=['Physical Inactivity','Current Asthma'])
+        >>> new_df = client.filter_by_measures(df, cat_ids=['HLTHOUT'])
+        """
+        sub_df = df
+        if measures:
+            sub_df = sub_df[sub_df['short_question_text'].isin(measures)]
+        if categories:
+            sub_df = sub_df[sub_df['category'].isin(categories)]
+        if measure_ids:
+            sub_df = sub_df[sub_df['measureid'].isin(measure_ids)]
+        if cat_ids:
+            sub_df = sub_df[sub_df['categoryid'].isin(cat_ids)]
+        return sub_df
