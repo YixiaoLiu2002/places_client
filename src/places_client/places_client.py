@@ -27,7 +27,10 @@ class PlacesClient:
         """
         df = pd.DataFrame(data)
         # remove the API's metadata
-        df = df.drop([':id', ':version', ':created_at', ':updated_at'], axis=1, errors='ignore')
+        df = df.drop(
+            [':id', ':version', ':created_at', ':updated_at', 'data_value_footnote_symbol', 'data_value_footnote'], 
+            axis=1, errors='ignore'
+            )
         # convert numeric variables
         numeric_cols = ['data_value', 'low_confidence_limit', 'high_confidence_limit', 'totalpopulation']
         for col in numeric_cols:
@@ -37,8 +40,8 @@ class PlacesClient:
 
     def get_measure_list(self):
         """
-        Queries PLACES measures metadata and display key information of all measures filtered by this package
-        (those categorized as health outcomes or health risk behaviors).
+        Retrieve the key information of all available measures 
+        (all health outcomes and health risk behaviors measures).
 
         Returns
         -------
@@ -51,7 +54,7 @@ class PlacesClient:
 
         Examples
         --------
-        >>> measures = client.get_meansure_list()
+        >>> measures = client.get_measure_list()
         >>> measures.head()
         """
         data_dictionary_id = 'm35w-spkz'
@@ -103,14 +106,14 @@ class PlacesClient:
         county_df = self._json_to_df(data)
         
         # Filter measures categorized as health outcomes and health risk behaviors
-        county_df = county_df[county_df['category'].isin(['Health Outcomes', 'Health Risk Behaviors'])]
+        county_df = county_df[county_df['categoryid'].isin(['HLTHOUT', 'RISKBEH'])]
         county_df = county_df.reset_index(drop=True)
         return county_df
 
-    def filter_by_measures(self, df, measures=None, categories=None, measure_ids=None, cat_ids=None):
+    def filter_by_measures(self, df, measures=None, categories=None, measure_ids=None):
         """
         Get a subset of a PLACES DataFrame by measures or categories. 
-        Both short names and ids of measures and categories are supported.
+        Both the short names and ids of measures are supported.
         
         Parameters
         ----------
@@ -122,8 +125,6 @@ class PlacesClient:
             Short names of categories to keep.
         measure_ids: list of strings
             ids of measures to keep.
-        cat_ids: list of strings
-            ids of categories to keep.
 
 
         Returns
@@ -134,7 +135,7 @@ class PlacesClient:
         Examples
         --------
         >>> new_df = client.filter_by_measures(df, measures=['Physical Inactivity','Current Asthma'])
-        >>> new_df = client.filter_by_measures(df, cat_ids=['HLTHOUT'])
+        >>> new_df = client.filter_by_measures(df, categories=['Health Outcomes'])
         """
         sub_df = df
         if measures:
@@ -143,6 +144,4 @@ class PlacesClient:
             sub_df = sub_df[sub_df['category'].isin(categories)]
         if measure_ids:
             sub_df = sub_df[sub_df['measureid'].isin(measure_ids)]
-        if cat_ids:
-            sub_df = sub_df[sub_df['categoryid'].isin(cat_ids)]
         return sub_df
