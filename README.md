@@ -2,7 +2,7 @@
 
 A Python package for extracting county-level data from the CDC PLACES project through API. 
 
-It focuses exclusively on measures categorized as Health Outcomes and Health Risk Behaviors, allowing users to access and filter these key public health indicators and explore the relationship between these measures.
+It focuses exclusively on measures categorized as **Health Outcomes** and **Health Risk Behaviors**, allowing users to access and filter these key public health indicators and explore the relationship between these measures.
 
 ## Installation
 
@@ -14,6 +14,7 @@ It focuses exclusively on measures categorized as Health Outcomes and Health Ris
 - Display all Health Outcomes and Health Risk Behaviors measures.
 - Retrieve county-level places data of a certain release.
 - Filter data by measures or categories.
+- Create a pivot table of places measures.
 - calculate the correlation between measures.
 
 ## Contributing

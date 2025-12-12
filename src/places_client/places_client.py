@@ -9,7 +9,7 @@ class PlacesClient:
             'X-App-Token': token
         })
 
-    def _make_request(self, url, params=None):
+    def _make_request(self, url: str, params=None):
         """
         Make a get request to the API and return responses in JSON
         """
@@ -18,10 +18,9 @@ class PlacesClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            print(f"API Error: {e}")
-            raise
+            raise RuntimeError(f"API Error: {e}")
     
-    def _json_to_df(self, data):
+    def _json_to_df(self, data) -> pd.DataFrame:
         """
         Transform JSON data into pandas DataFrame.
         """
@@ -35,13 +34,12 @@ class PlacesClient:
         numeric_cols = ['data_value', 'low_confidence_limit', 'high_confidence_limit', 'totalpopulation']
         for col in numeric_cols:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col])
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         return df
 
-    def get_measure_list(self):
+    def get_measure_list(self) -> pd.DataFrame:
         """
-        Retrieve the key information of all available measures 
-        (all health outcomes and health risk behaviors measures).
+        Display all Health Outcomes and Health Risk Behaviors Measures 
 
         Returns
         -------
@@ -67,7 +65,7 @@ class PlacesClient:
         measures_df.columns = pd.Index(['id', 'short_name', 'full_name', 'category'])
         return measures_df
     
-    def get_county_data(self, release='2025'):
+    def get_county_data(self, release: str ='2025') -> pd.DataFrame:
         """
         Retrieve county-level health-risk behaviors and health outcomes data from The CDC PLACES API.
         
@@ -97,10 +95,10 @@ class PlacesClient:
         
         if not isinstance(release, str):
             raise TypeError("The release must be a string.")
-        elif release not in release_ids:
+        if release not in release_ids:
             raise ValueError("This release version is not supported.")
-        else:
-            url = self.base_url + release_ids[release] + '/query.json'
+
+        url = self.base_url + release_ids[release] + '/query.json'
 
         data = self._make_request(url)
         county_df = self._json_to_df(data)
@@ -113,7 +111,7 @@ class PlacesClient:
         county_df = county_df.dropna(subset=["data_value"]).reset_index(drop=True)
         return county_df
 
-    def filter_by_measures(self, df, measures=None, categories=None, measure_ids=None):
+    def filter_by_measures(self, df: pd.DataFrame, measures: str=None, categories: str=None) -> pd.DataFrame:
         """
         Get a subset of a PLACES DataFrame by measures or categories. 
         Both the short names and ids of measures are supported.
@@ -121,19 +119,16 @@ class PlacesClient:
         Parameters
         ----------
         df : pandas DataFrame
-            The dataframe to subset from.
+            The county-level PLACES dataset.
         measures : list of strings
-            Short names of measures to keep.
+            Short names or measureids of measures to keep.
         categories : list of strings
-            Short names of categories to keep.
-        measure_ids : list of strings
-            ids of measures to keep.
-
+            Short namse or categoryids of categories to keep.
 
         Returns
         -------
         sub_df : pandas DataFrame
-            A dataframe containing only selected measures and/or categories.
+            A dataframe containing only data of selected measures and/or categories.
         
         Examples
         --------
@@ -142,21 +137,89 @@ class PlacesClient:
         """
         sub_df = df
         if measures:
-            sub_df = sub_df[sub_df['short_question_text'].isin(measures)]
+            sub_df = sub_df[sub_df['short_question_text'].isin(measures) | sub_df['measureid'].isin(measures)]
         if categories:
-            sub_df = sub_df[sub_df['category'].isin(categories)]
-        if measure_ids:
-            sub_df = sub_df[sub_df['measureid'].isin(measure_ids)]
+            sub_df = sub_df[sub_df['category'].isin(categories) | sub_df['categoryid'].isin(categories)]
         return sub_df
+    
+    def filter_by_regions(self, df: pd.DataFrame, states: str=None, counties: str=None) -> pd.DataFrame:
+        """
+        Get a subset of a PLACES DataFrame by states or counties. 
+        Both the names and abbreviations of states are supported.
+        
+        Parameters
+        ----------
+        df : pandas DataFrame
+            The county-level PLACES dataset.
+        states : list of strings
+            Names or stateabbr of states to keep.
+        counties : list of strings
+            Names of counties to keep.
 
-    def get_correlation(self, df, x:str, y:str):
+        Returns
+        -------
+        sub_df : pandas DataFrame
+            A dataframe containing only data of selected counties and/or states.
+        
+        Examples
+        --------
+        >>> new_df = client.filter_by_measures(df, measures=['Physical Inactivity','Current Asthma'])
+        >>> new_df = client.filter_by_measures(df, categories=['Health Outcomes'])
+        """
+        sub_df = df
+        if states:
+            sub_df = sub_df[sub_df['stateabbr'].isin(states) | sub_df['statedesc'].isin(states)]
+        if counties:
+            sub_df = sub_df[sub_df['locationname'].isin(counties)]
+        return sub_df
+    
+    def create_pivot_table(self, df: pd.DataFrame, level='county') -> pd.DataFrame:
+        """
+        Create a wide pivot table that shows all measure values for each county or for each state.
+        
+        Parameters
+        ----------
+        df : pandas DataFrame
+            The county-level PLACES dataset.
+        level : str, optional
+            Aggregation level, county or state.
+
+        Returns
+        -------
+        table : pandas DataFrame
+            A pivot table with columns representing measure IDs and rows representing counties or states.
+        
+        Examples
+        --------
+        >>> state_table = client.create_pivot_table(df, level='state')
+        >>> state_table.head()
+        """
+        if level not in ['county', 'state']:
+            raise ValueError("Level must be 'county' or 'state'.")
+    
+        # convert df into wide format
+        table = df.pivot_table(
+            index='locationname',
+            columns='measureid',
+            values='data_value',
+        )
+
+        if level == 'state':
+            # aggregate county-level data into state-level data
+            counties_states = df[['locationname', 'statedesc']].drop_duplicates().set_index('locationname')
+            table = table.join(counties_states, how='left')
+            table = table.groupby('statedesc').mean()
+
+        return table
+
+    def get_correlation(self, df: pd.DataFrame, x:str, y:str) -> Dict[str, float]:
         """
         Calculate the correlation between 2 measures
         
         Parameters
         ----------
         df : pandas DataFrame
-            The dataframe storing places data.
+            The county-level PLACES dataset.
         x : str
         The measure ID of the first variable.
         y : str
@@ -180,6 +243,9 @@ class PlacesClient:
             raise ValueError("Two measures (x and y) must be provided.")
         if not isinstance(x, str) or not isinstance(y, str):
             raise TypeError("x and y must be strings.")
+        measures = df['measureid'].unique()
+        if x not in measures or y not in measures:
+            raise ValueError("Invalid measureid.")
         
         sub_df = self.filter_by_measures(df, measure_ids=[x, y])
 
@@ -194,3 +260,35 @@ class PlacesClient:
             'mean_y': float(table[y].mean())
         }
         return result
+    
+    def summarize_measure(self, df: pd.DataFrame, measureid: str) -> Dict[str, float]:
+        """
+        Offer basic descriptive statistics for a given PLACES measure.
+
+        Parameters
+        ----------
+        df : pandas DataFrame
+            The county-level PLACES dataset.
+        measureid : str
+            The measure ID of the measure to summarize.
+
+        Returns
+        -------
+        summary : dict
+            Dictionary with mean, median, min, max, and missing value count.
+        """
+        if measureid not in df['measureid'].unique():
+            raise ValueError("Invalid measureid.")
+
+        data = df[df['measureid'] == measureid]['data_value']
+
+        summary_dict =  {
+            'mean': float(data.mean()),
+            'median': float(data.median()),
+            'min': float(data.min()),
+            'max': float(data.max()),
+            'std': float(data.std()),
+            'count': float(data.count()),
+            'missing_values_count': float(data.isna().sum())
+        }
+        return summary_dict
