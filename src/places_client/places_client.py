@@ -45,7 +45,7 @@ class PlacesClient:
 
         Returns
         -------
-        measures_df: pandas Data Frame
+        measures_df : pandas Data Frame
             A dataframe displaying the following the information of filtered measures:
             - id: measure identifier
             - short_name: short label
@@ -105,9 +105,12 @@ class PlacesClient:
         data = self._make_request(url)
         county_df = self._json_to_df(data)
         
-        # Filter measures categorized as health outcomes and health risk behaviors
+        # Only keep measures categorized as health outcomes and health risk behaviors
         county_df = county_df[county_df['categoryid'].isin(['HLTHOUT', 'RISKBEH'])]
         county_df = county_df.reset_index(drop=True)
+
+        # Drop rows missing the key data
+        county_df = county_df.dropna(subset=["data_value"]).reset_index(drop=True)
         return county_df
 
     def filter_by_measures(self, df, measures=None, categories=None, measure_ids=None):
@@ -119,11 +122,11 @@ class PlacesClient:
         ----------
         df : pandas DataFrame
             The dataframe to subset from.
-        measures: list of strings
+        measures : list of strings
             Short names of measures to keep.
-        categories: list of strings
+        categories : list of strings
             Short names of categories to keep.
-        measure_ids: list of strings
+        measure_ids : list of strings
             ids of measures to keep.
 
 
@@ -145,3 +148,49 @@ class PlacesClient:
         if measure_ids:
             sub_df = sub_df[sub_df['measureid'].isin(measure_ids)]
         return sub_df
+
+    def get_correlation(self, df, x:str, y:str):
+        """
+        Calculate the correlation between 2 measures
+        
+        Parameters
+        ----------
+        df : pandas DataFrame
+            The dataframe storing places data.
+        x : str
+        The measure ID of the first variable.
+        y : str
+        The measure ID of the second variable.
+
+
+        Returns
+        -------
+        result : dict
+            A dictionary containing:
+            - corr_coef: the correlation coefficient (r)
+            - sample_size: number of counties included in calculation
+            - mean_x, mean_y: means of measure x and y
+        
+        Examples
+        --------
+        >>> client.get_correlation(places_2024, 'LPA', 'DEPRESSION')
+        {'corr_coef': 0.20321713670955188, 'sample_size': 1838, 'mean_x': 26.86089867640032, 'mean_y': 23.600384332489686}
+        """
+        if x is None or y is None:
+            raise ValueError("Two measures (x and y) must be provided.")
+        if not isinstance(x, str) or not isinstance(y, str):
+            raise TypeError("x and y must be strings.")
+        
+        sub_df = self.filter_by_measures(df, measure_ids=[x, y])
+
+        table = sub_df.pivot_table(values='data_value', index='locationname', columns='measureid')
+        table = table.dropna()
+        r = table[x].corr(table[y], method='pearson')
+
+        result = {
+            'corr_coef': float(r), 
+            'sample_size': len(table),
+            'mean_x': float(table[x].mean()),
+            'mean_y': float(table[y].mean())
+        }
+        return result

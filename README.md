@@ -1,16 +1,20 @@
 # places_client
 
-Python package for extracting health data from CDC PLACES API
+A Python package for extracting county-level data from the CDC PLACES project through API. 
+
+It focuses exclusively on measures categorized as Health Outcomes and Health Risk Behaviors, allowing users to access and filter these key public health indicators and explore the relationship between these measures.
 
 ## Installation
 
 ```bash
-$ pip install places_client
+%pip install -i https://test.pypi.org/simple/ places_client
 ```
 
 ## Usage
-
-- TODO
+- Display all Health Outcomes and Health Risk Behaviors measures.
+- Retrieve county-level places data of a certain release.
+- Filter data by measures or categories.
+- calculate the correlation between measures.
 
 ## Contributing
 
