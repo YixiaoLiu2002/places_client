@@ -236,7 +236,6 @@ class PlacesClient:
         y : str
         The measure ID or short name of the second variable.
 
-
         Returns
         -------
         result : dict
