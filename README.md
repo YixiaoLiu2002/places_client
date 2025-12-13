@@ -1,4 +1,5 @@
 # places_client
+**PyPI page**: https://pypi.org/project/places_client/
 
 A Python package for accessing county-level data from the **CDC PLACES** project's API. 
 
