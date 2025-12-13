@@ -1,8 +1,12 @@
 import requests
 import pandas as pd
+from typing import Dict
 
 class PlacesClient:
     def __init__(self, token):
+        """
+        Initialize a client object
+        """
         self.base_url = 'https://data.cdc.gov/api/v3/views/'
         self.session = requests.Session()
         self.session.headers.update({
@@ -145,7 +149,6 @@ class PlacesClient:
     def filter_by_regions(self, df: pd.DataFrame, states: str=None, counties: str=None) -> pd.DataFrame:
         """
         Get a subset of a PLACES DataFrame by states or counties. 
-        Both the names and abbreviations of states are supported.
         
         Parameters
         ----------
@@ -154,7 +157,7 @@ class PlacesClient:
         states : list of strings
             Names or stateabbr of states to keep.
         counties : list of strings
-            Names of counties to keep.
+            Location ids (FIPS codes) of counties to keep.
 
         Returns
         -------
@@ -170,7 +173,7 @@ class PlacesClient:
         if states:
             sub_df = sub_df[sub_df['stateabbr'].isin(states) | sub_df['statedesc'].isin(states)]
         if counties:
-            sub_df = sub_df[sub_df['locationname'].isin(counties)]
+            sub_df = sub_df[sub_df['locationid'].isin(counties)]
         return sub_df
     
     def create_pivot_table(self, df: pd.DataFrame, level='county') -> pd.DataFrame:
@@ -199,17 +202,25 @@ class PlacesClient:
     
         # convert df into wide format
         table = df.pivot_table(
-            index='locationname',
+            index='locationid',
             columns='measureid',
             values='data_value',
         )
 
-        if level == 'state':
-            # aggregate county-level data into state-level data
-            counties_states = df[['locationname', 'statedesc']].drop_duplicates().set_index('locationname')
-            table = table.join(counties_states, how='left')
-            table = table.groupby('statedesc').mean()
+        if level == 'county':
+            # add county and state names for county-level table
+            id_names = df[['locationid', 'locationname', 'statedesc']].drop_duplicates().set_index('locationid')
+            table = table.join(id_names, how='left')
+            # move name columns to front
+            names = ['locationname', 'statedesc']
+            data = [col for col in table.columns if col not in names]
+            table = table[names + data]
+            return table
 
+        # if level == 'state', aggregate data into state-level
+        counties_states = df[['locationid', 'statedesc']].drop_duplicates().set_index('locationid')
+        table = table.join(counties_states, how='left')
+        table = table.groupby('statedesc').mean(numeric_only=True)
         return table
 
     def get_correlation(self, df: pd.DataFrame, x:str, y:str) -> Dict[str, float]:
@@ -221,9 +232,9 @@ class PlacesClient:
         df : pandas DataFrame
             The county-level PLACES dataset.
         x : str
-        The measure ID of the first variable.
+        The measure ID or short name of the first variable.
         y : str
-        The measure ID of the second variable.
+        The measure ID or short name of the second variable.
 
 
         Returns
@@ -247,7 +258,7 @@ class PlacesClient:
         if x not in measures or y not in measures:
             raise ValueError("Invalid measureid.")
         
-        sub_df = self.filter_by_measures(df, measure_ids=[x, y])
+        sub_df = self.filter_by_measures(df, measures=[x, y])
 
         table = sub_df.pivot_table(values='data_value', index='locationname', columns='measureid')
         table = table.dropna()

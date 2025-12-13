@@ -1,8 +1,16 @@
 # places_client
 
-A Python package for extracting county-level data from the CDC PLACES project through API. 
+A Python package for accessing county-level data from the **CDC PLACES** project's API. 
 
 It focuses exclusively on measures categorized as **Health Outcomes** and **Health Risk Behaviors**, allowing users to access and filter these key public health indicators and explore the relationship between these measures.
+
+## Features
+- Retrieve county-level places data for a specified release (2020-2025).
+- Display key info of supported measures (id, short name, full name, and category).
+- Filter data by measures, categories, counties, or states.
+- Create wide pivot tables for measures at county or state levels.
+- Calculate correlations between measures.
+- Get the descriptive statistics of meausures.
 
 ## Installation
 
@@ -11,11 +19,19 @@ It focuses exclusively on measures categorized as **Health Outcomes** and **Heal
 ```
 
 ## Usage
-- Display all Health Outcomes and Health Risk Behaviors measures.
-- Retrieve county-level places data of a certain release.
-- Filter data by measures or categories.
-- Create a pivot table of places measures.
-- calculate the correlation between measures.
+```python
+from places_client.places_client import PlacesClient
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+client = PlacesClient(os.getenv("CDC_API_TOKEN"))
+
+df = client.get_county_data('2024')
+measures = client.get_measure_list()
+```
+
+For detailed usage, view this vignette: [[vignette.ipynb]]
 
 ## Contributing
 
