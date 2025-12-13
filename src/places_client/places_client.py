@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from typing import Dict
+from typing import Dict, List, Optional
 
 class PlacesClient:
     def __init__(self, token):
@@ -115,7 +115,7 @@ class PlacesClient:
         county_df = county_df.dropna(subset=["data_value"]).reset_index(drop=True)
         return county_df
 
-    def filter_by_measures(self, df: pd.DataFrame, measures: str=None, categories: str=None) -> pd.DataFrame:
+    def filter_by_measures(self, df: pd.DataFrame, measures: Optional[List[str]]=None, categories: Optional[List[str]]=None) -> pd.DataFrame:
         """
         Get a subset of a PLACES DataFrame by measures or categories. 
         Both the short names and ids of measures are supported.
@@ -146,7 +146,7 @@ class PlacesClient:
             sub_df = sub_df[sub_df['category'].isin(categories) | sub_df['categoryid'].isin(categories)]
         return sub_df
     
-    def filter_by_regions(self, df: pd.DataFrame, states: str=None, counties: str=None) -> pd.DataFrame:
+    def filter_by_regions(self, df: pd.DataFrame, states: Optional[List[str]]=None, counties: Optional[List[str]]=None) -> pd.DataFrame:
         """
         Get a subset of a PLACES DataFrame by states or counties. 
         
@@ -286,6 +286,10 @@ class PlacesClient:
         -------
         summary : dict
             Dictionary with mean, median, min, max, and missing value count.
+
+        Examples
+        --------
+        >>> client.summarize_measure(df, 'ASTHMA')
         """
         if measureid not in df['measureid'].unique():
             raise ValueError("Invalid measureid.")
