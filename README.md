@@ -31,7 +31,7 @@ df = client.get_county_data('2024')
 measures = client.get_measure_list()
 ```
 
-For detailed usage, view this vignette: [[vignette.ipynb]]
+For detailed usage, view this vignette: [places_client vignette](vignette.ipynb)
 
 ## Contributing
 
