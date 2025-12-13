@@ -15,7 +15,7 @@ It focuses exclusively on measures categorized as **Health Outcomes** and **Heal
 ## Installation
 
 ```bash
-%pip install -i https://test.pypi.org/simple/ places_client
+pip install places_client
 ```
 
 ## Usage
